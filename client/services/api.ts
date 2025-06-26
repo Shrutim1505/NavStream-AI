@@ -4,7 +4,8 @@
 const API_BASE_URL = 'http://localhost:3001/api'; // Backend API URL
 
 export interface Port {
-  id: number;
+  id?: number | string;
+  _id?: string;
   name: string;
   country: string;
   coordinates: {

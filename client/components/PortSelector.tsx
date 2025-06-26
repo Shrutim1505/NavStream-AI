@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, TextInput, ActivityIndicator } from 'react-native';
-import { Search, MapPin, ChevronDown } from 'lucide-react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import { MapPin, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react-native';
 import { getPorts, Port } from '@/services/api';
 
 interface PortSelectorProps {
@@ -18,55 +18,89 @@ export default function PortSelector({
   onPortSelect, 
   placeholder 
 }: PortSelectorProps) {
-  const [modalVisible, setModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [dropdownVisible, setDropdownVisible] = useState(false);
   const [ports, setPorts] = useState<Port[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Fetch ports with proper error handling
+  const fetchPorts = useCallback(async () => {
     setLoading(true);
-    getPorts()
-      .then(data => {
-        setPorts(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Failed to load ports');
-        setLoading(false);
-      });
+    setError(null);
+    try {
+      const data = await getPorts();
+      if (!data || !Array.isArray(data)) {
+        throw new Error('Invalid data format received');
+      }
+      const normalizedPorts = data.map((port, index) => ({
+        ...port,
+        id: port.id || port._id || `port-${index}`,
+        name: port.name || 'Unknown Port',
+        country: port.country || 'Unknown Country'
+      }));
+      setPorts(normalizedPorts);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load ports');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const filteredPorts = ports.filter(port =>
-    port.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    port.country.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    fetchPorts();
+  }, [fetchPorts]);
 
-  const handlePortSelect = (port: Port) => {
+  const handleSelect = (port: Port) => {
     onPortSelect(port);
-    setModalVisible(false);
-    setSearchQuery('');
+    setDropdownVisible(false);
   };
 
-  const renderPortItem = ({ item }: { item: Port }) => (
-    <TouchableOpacity 
-      style={styles.portItem}
-      onPress={() => handlePortSelect(item)}
-    >
-      <MapPin size={20} color="#64748B" />
-      <View style={styles.portInfo}>
-        <Text style={styles.portName}>{item.name}</Text>
-        <Text style={styles.portCountry}>{item.country}</Text>
+  const renderDropdown = () => {
+    if (loading) {
+      return (
+        <View style={styles.dropdown}>
+          <ActivityIndicator size="small" color="#0891B2" />
+        </View>
+      );
+    }
+    if (error) {
+      return (
+        <View style={styles.dropdown}>
+          <AlertCircle size={20} color="#EF4444" />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      );
+    }
+    return (
+      <View style={styles.dropdown}>
+        <FlatList
+          data={ports}
+          keyExtractor={item => item.id?.toString() || Math.random().toString()}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.dropdownItem}
+              onPress={() => handleSelect(item)}
+              activeOpacity={0.7}
+            >
+              <MapPin size={18} color="#64748B" />
+              <View style={styles.portInfo}>
+                <Text style={styles.portName}>{item.name}</Text>
+                <Text style={styles.portCountry}>{item.country}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <TouchableOpacity 
         style={styles.selector}
-        onPress={() => setModalVisible(true)}
+        onPress={() => setDropdownVisible(v => !v)}
+        activeOpacity={0.7}
       >
         <View style={styles.selectorLeft}>
           {icon}
@@ -77,54 +111,20 @@ export default function PortSelector({
             {selectedPort ? selectedPort.name : placeholder}
           </Text>
         </View>
-        <ChevronDown size={20} color="#64748B" />
+        {dropdownVisible ? (
+          <ChevronUp size={20} color="#64748B" />
+        ) : (
+          <ChevronDown size={20} color="#64748B" />
+        )}
       </TouchableOpacity>
-
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Port</Text>
-              <TouchableOpacity 
-                style={styles.closeButton}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.closeButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.searchContainer}>
-              <Search size={20} color="#64748B" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search ports..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholderTextColor="#94A3B8"
-              />
-            </View>
-
-            {loading ? (
-              <ActivityIndicator size="large" color="#0891B2" style={{ marginVertical: 40 }} />
-            ) : error ? (
-              <Text style={{ color: 'red', textAlign: 'center', marginVertical: 40 }}>{error}</Text>
-            ) : (
-              <FlatList
-                data={filteredPorts}
-                renderItem={renderPortItem}
-                keyExtractor={(item) => item.id.toString()}
-                style={styles.portsList}
-                showsVerticalScrollIndicator={false}
-              />
-            )}
-          </View>
+      {dropdownVisible && (
+        <View>
+          <TouchableOpacity onPress={fetchPorts} style={{ alignSelf: 'flex-end', margin: 8 }}>
+            <Text style={{ color: '#0891B2', fontSize: 13 }}>Refresh</Text>
+          </TouchableOpacity>
+          {renderDropdown()}
         </View>
-      </Modal>
+      )}
     </View>
   );
 }
@@ -132,6 +132,7 @@ export default function PortSelector({
 const styles = StyleSheet.create({
   container: {
     marginBottom: 20,
+    zIndex: 10, // Ensure dropdown overlays other elements
   },
   label: {
     fontSize: 16,
@@ -169,67 +170,28 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: '#94A3B8',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
+  dropdown: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 20,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  closeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  closeButtonText: {
-    color: '#0891B2',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    margin: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     borderRadius: 12,
-    gap: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 4,
+    maxHeight: 220,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    zIndex: 100,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#1E293B',
-  },
-  portsList: {
-    flex: 1,
-  },
-  portItem: {
+  dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F8FAFC',
-    gap: 15,
+    gap: 12,
   },
   portInfo: {
     flex: 1,
@@ -243,5 +205,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     marginTop: 2,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#EF4444',
+    marginLeft: 8,
   },
 });

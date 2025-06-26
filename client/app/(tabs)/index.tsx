@@ -1,15 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ship, MapPin, Clock, Fuel, Shield, ArrowRight } from 'lucide-react-native';
+import { Ship, MapPin, ArrowRight } from 'lucide-react-native';
 import PortSelector from '@/components/PortSelector';
 import OptimizationForm from '@/components/OptimizationForm';
-import { optimizeRoute, Voyage } from '@/services/api';
-import { useRouter } from 'expo-router';
+import { optimizeRoute, Voyage, Port } from '@/services/api';
 
 export default function RouteOptimizer() {
-  const [departurePort, setDeparturePort] = useState(null);
-  const [destinationPort, setDestinationPort] = useState(null);
+  const [departurePort, setDeparturePort] = useState<Port | null>(null);
+  const [destinationPort, setDestinationPort] = useState<Port | null>(null);
   const [optimizationParams, setOptimizationParams] = useState({
     fuelEfficiency: 50,
     travelTime: 50,
@@ -17,14 +16,29 @@ export default function RouteOptimizer() {
   });
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [result, setResult] = useState<Voyage | null>(null);
-  const router = useRouter();
+
+  // Prevent selecting the same port for both fields
+  const handleDepartureSelect = useCallback((port: Port) => {
+    if (destinationPort && port.id === destinationPort.id) {
+      Alert.alert('Invalid Selection', 'Departure and destination ports must be different.');
+      return;
+    }
+    setDeparturePort(port);
+  }, [destinationPort]);
+
+  const handleDestinationSelect = useCallback((port: Port) => {
+    if (departurePort && port.id === departurePort.id) {
+      Alert.alert('Invalid Selection', 'Departure and destination ports must be different.');
+      return;
+    }
+    setDestinationPort(port);
+  }, [departurePort]);
 
   const handleOptimizeRoute = async () => {
     if (!departurePort || !destinationPort) {
       Alert.alert('Missing Information', 'Please select both departure and destination ports.');
       return;
     }
-
     setIsOptimizing(true);
     setResult(null);
     try {
@@ -57,16 +71,24 @@ export default function RouteOptimizer() {
             label="Departure Port"
             icon={<MapPin size={20} color="#059669" />}
             selectedPort={departurePort}
-            onPortSelect={setDeparturePort}
+            onPortSelect={handleDepartureSelect}
             placeholder="Select departure port"
           />
           <PortSelector
             label="Destination Port"
             icon={<MapPin size={20} color="#DC2626" />}
             selectedPort={destinationPort}
-            onPortSelect={setDestinationPort}
+            onPortSelect={handleDestinationSelect}
             placeholder="Select destination port"
           />
+          <View style={styles.selectedSummary}>
+            <Text style={styles.selectedText}>
+              Departure: <Text style={styles.selectedPort}>{departurePort?.name || '-'}</Text>
+            </Text>
+            <Text style={styles.selectedText}>
+              Destination: <Text style={styles.selectedPort}>{destinationPort?.name || '-'}</Text>
+            </Text>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -99,38 +121,8 @@ export default function RouteOptimizer() {
             <Text style={styles.resultValue}>{result.estimatedTime} hours</Text>
             <Text style={styles.resultLabel}>Fuel Consumption:</Text>
             <Text style={styles.resultValue}>{result.fuelConsumption} tons</Text>
-            <TouchableOpacity
-              style={styles.viewVoyageButton}
-              onPress={() => router.push(`/voyage/${result._id}`)}
-            >
-              <Text style={styles.viewVoyageButtonText}>View Voyage</Text>
-            </TouchableOpacity>
           </View>
         )}
-
-        <View style={styles.infoCards}>
-          <View style={styles.infoCard}>
-            <Fuel size={24} color="#EA580C" />
-            <Text style={styles.infoCardTitle}>Fuel Efficiency</Text>
-            <Text style={styles.infoCardDescription}>
-              Optimize for fuel consumption and cost savings
-            </Text>
-          </View>
-          <View style={styles.infoCard}>
-            <Clock size={24} color="#7C3AED" />
-            <Text style={styles.infoCardTitle}>Travel Time</Text>
-            <Text style={styles.infoCardDescription}>
-              Minimize journey duration for faster delivery
-            </Text>
-          </View>
-          <View style={styles.infoCard}>
-            <Shield size={24} color="#059669" />
-            <Text style={styles.infoCardTitle}>Route Safety</Text>
-            <Text style={styles.infoCardDescription}>
-              Avoid dangerous weather and high-risk areas
-            </Text>
-          </View>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -168,6 +160,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1E293B',
     marginBottom: 15,
+  },
+  selectedSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    marginBottom: 5,
+    paddingHorizontal: 4,
+  },
+  selectedText: {
+    fontSize: 15,
+    color: '#64748B',
+  },
+  selectedPort: {
+    color: '#0891B2',
+    fontWeight: '600',
   },
   optimizeButton: {
     flexDirection: 'row',
@@ -215,43 +222,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#0891B2',
     fontWeight: '500',
-  },
-  viewVoyageButton: {
-    marginTop: 20,
-    backgroundColor: '#0891B2',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  viewVoyageButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  infoCards: {
-    gap: 15,
-    marginBottom: 30,
-  },
-  infoCard: {
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  infoCardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginTop: 10,
-  },
-  infoCardDescription: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 5,
-    lineHeight: 20,
   },
 });
