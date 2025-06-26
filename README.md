@@ -48,16 +48,6 @@ NavStream-AI is a cross-platform application designed to optimize shipping route
 
 ---
 
-## 📂 Project Structure
-
-```bash
-NavStream-AI/
-├── client/        # React Native frontend
-├── server/        # Node.js + Express backend
-├── README.md
-├── package.json
-└── ...
-
 ## 📈 Future Enhancements
 
 - Real-time weather and tracking integration
