@@ -57,3 +57,21 @@ NavStream-AI/
 ├── README.md
 ├── package.json
 └── ...
+
+## 📈 Future Enhancements
+
+- Real-time weather and tracking integration
+- User authentication and profiles
+- Route visualization on interactive maps
+- Advanced analytics and reporting
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a new branch
+3. Make your changes
+4. Submit a pull request
+
+
