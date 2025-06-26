@@ -61,7 +61,7 @@ export default function RouteOptimizer() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Ship size={32} color="#0891B2" />
-          <Text style={styles.title}>Route Optimizer</Text>
+          <Text style={styles.title}>NavStream-AI</Text>
           <Text style={styles.subtitle}>Plan your optimal shipping route</Text>
         </View>
 

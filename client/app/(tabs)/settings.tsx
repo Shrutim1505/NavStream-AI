@@ -101,7 +101,7 @@ export default function Settings() {
           <Text style={styles.sectionTitle}>About</Text>
           <View style={styles.sectionContent}>
             <View style={styles.appInfo}>
-              <Text style={styles.appName}>Ship Route Optimizer</Text>
+              <Text style={styles.appName}> NavStream-AI</Text>
               <Text style={styles.appVersion}>Version 1.0.0</Text>
               <Text style={styles.appDescription}>
                 Optimize your shipping routes for maximum efficiency, cost savings, and safety.
@@ -118,7 +118,7 @@ export default function Settings() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            © 2024 Ship Route Optimizer. All rights reserved.
+            © 2025 NavStream-AI. All rights reserved.
           </Text>
         </View>
       </ScrollView>
