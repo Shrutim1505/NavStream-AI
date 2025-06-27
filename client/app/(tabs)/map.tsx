@@ -1,40 +1,53 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Navigation, RotateCcw } from 'lucide-react-native';
 import MapView from '@/components/MapView';
 
 export default function MapScreen() {
   const [showRoute, setShowRoute] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [routeData, setRouteData] = useState<any>(null);
 
-  // Sample route coordinates (Sydney to Tokyo)
-  const routeCoordinates = [
-    { latitude: -33.8688, longitude: 151.2093 }, // Sydney
-    { latitude: -20.0, longitude: 160.0 }, // Waypoint 1
-    { latitude: 10.0, longitude: 150.0 }, // Waypoint 2
-    { latitude: 35.6762, longitude: 139.6503 }, // Tokyo
-  ];
+  useEffect(() => {
+    // Replace with your actual backend endpoint
+    fetch('http://localhost:3001/api/route/latest')
+      .then(res => res.json())
+      .then(data => {
+        setRouteData(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        Alert.alert('Error', 'Failed to load route data from backend.');
+        setLoading(false);
+      });
+  }, []);
 
-  const markers = [
-    {
-      coordinate: { latitude: -33.8688, longitude: 151.2093 },
-      title: 'Departure Port',
-      description: 'Sydney, Australia',
-      color: '#059669'
-    },
-    {
-      coordinate: { latitude: 35.6762, longitude: 139.6503 },
-      title: 'Destination Port',
-      description: 'Tokyo, Japan',
-      color: '#DC2626'
-    }
-  ];
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color="#0891B2" style={{ flex: 1 }} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!routeData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={{ color: '#EF4444', textAlign: 'center', marginTop: 40 }}>
+          No route data available.
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  const { routeCoordinates, markers, stats, routeName } = routeData;
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Route Visualization</Text>
-        <Text style={styles.subtitle}>Sydney → Tokyo</Text>
+        <Text style={styles.subtitle}>{routeName}</Text>
       </View>
 
       <View style={styles.mapContainer}>
@@ -50,15 +63,15 @@ export default function MapScreen() {
       <View style={styles.routeInfo}>
         <View style={styles.routeStats}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>2,847</Text>
+            <Text style={styles.statValue}>{stats.distance}</Text>
             <Text style={styles.statLabel}>Nautical Miles</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>6.2</Text>
+            <Text style={styles.statValue}>{stats.days}</Text>
             <Text style={styles.statLabel}>Days</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>$12,450</Text>
+            <Text style={styles.statValue}>${stats.fuelCost.toLocaleString()}</Text>
             <Text style={styles.statLabel}>Fuel Cost</Text>
           </View>
         </View>
